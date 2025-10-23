@@ -6,16 +6,18 @@ import re
 # Set the target year
 TARGET_YEAR = 2023
 LOCAL_SAVE_DIR = "./files"
+delete_files = False
+android_dir = "/sdcard/DCIM/Camera" # "/storage/*/DCIM/Camera/"
+file_ext = "jpg"  # "mp4"
 
 ADB_PATH = os.path.expanduser("~/Library/Android/sdk/platform-tools/adb")
 # Ensure local directory exists
 os.makedirs(LOCAL_SAVE_DIR, exist_ok=True)
 """ Uses ADB to list all image files on the Android device's DCIM and Pictures folders. """
 #result = subprocess.run([f"{ADB_PATH}", "shell", "find /sdcard/DCIM /sdcard/Pictures -type f -name '*.jpg' -o -name '*.png'"],
-#result = subprocess.run([f"{ADB_PATH}", "shell", "find /sdcard/DCIM -type f -name '*.jpg'"],
 #result = subprocess.run([f"{ADB_PATH}", "shell", "find /sdcard/DCIM -type f -name '*.mp4'"],
 #result = subprocess.run([f"{ADB_PATH}", "shell", f"find /sdcard/DCIM/Camera -type f -name '{TARGET_YEAR}*.mp4'"],
-result = subprocess.run([f"{ADB_PATH}", "shell", f"find /sdcard/DCIM/Camera -type f -name '{TARGET_YEAR}*.jpg'"],
+result = subprocess.run([f"{ADB_PATH}", "shell", f"find {android_dir} -type f -name '{TARGET_YEAR}*.{file_ext}'"],
                         capture_output=True, text=True)
 
 photos = result.stdout.strip().split("\n")
@@ -59,14 +61,14 @@ subprocess.run([ADB_PATH, "shell", "setprop service.adb.compress 0"], capture_ou
 
 # TODO: Possibly implement a tar then pull like:
 #adb shell "tar cf /cache/temp.tar /sdcard/DCIM/Camera/2021*.jpeg" && adb pull /cache/temp.tar && tar xf temp.tar && rm temp.tar
-delete_files = False
-del_count = 0
 if delete_files:
+    del_count = 0
     for del_photo in good_photos:
         del_count += 1
         try:
             #del_count += 1
             print(f"Deleting {del_photo} File {del_count} of {good_len}")
-            subprocess.run([ADB_PATH, "shell", "rm", "", del_photo, LOCAL_SAVE_DIR], capture_output=True)
+            #subprocess.run([ADB_PATH, "shell", "rm", "", del_photo, LOCAL_SAVE_DIR], capture_output=True)
+            subprocess.run([ADB_PATH, "shell", "rm", "", del_photo], capture_output=True)
         except Exception as e:
             print(f"Error extracting date for {del_photo}: {e}")
