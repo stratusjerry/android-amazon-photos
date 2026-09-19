@@ -1,6 +1,8 @@
 import os
+import shutil
 import subprocess
 import re
+import sys
 #import shlex  # fix filenames with parens
 
 # Set the target year
@@ -12,7 +14,16 @@ set_compress = False
 android_dir = "/sdcard/DCIM/Camera" # "/storage/*/DCIM/Camera/"
 file_ext = "jpg"  # "mp4"
 
-ADB_PATH = os.path.expanduser("~/Library/Android/sdk/platform-tools/adb")
+# Locate adb: macOS Android Studio SDK, or platform-tools unzipped into Downloads on Windows,
+# falling back to whatever "adb" is on PATH
+if sys.platform == "win32":
+    ADB_PATH = os.path.expanduser("~/Downloads/platform-tools/adb.exe")
+else:
+    ADB_PATH = os.path.expanduser("~/Library/Android/sdk/platform-tools/adb")
+if not os.path.isfile(ADB_PATH):
+    ADB_PATH = shutil.which("adb")
+if ADB_PATH is None:
+    sys.exit("adb not found: install platform-tools (see README) or add adb to PATH")
 # Ensure local directory exists
 os.makedirs(LOCAL_SAVE_DIR, exist_ok=True)
 """ Uses ADB to list all image files on the Android device's DCIM and Pictures folders. """
