@@ -1,9 +1,9 @@
 import os
 import shutil
 import subprocess
-import re
+#import re
 import sys
-#import shlex  # fix filenames with parens
+import shlex  # fix filenames with parens
 
 # Set the target year
 TARGET_YEAR = 2023
@@ -30,13 +30,13 @@ os.makedirs(LOCAL_SAVE_DIR, exist_ok=True)
 #result = subprocess.run([f"{ADB_PATH}", "shell", "find /sdcard/DCIM /sdcard/Pictures -type f -name '*.jpg' -o -name '*.png'"],
 #result = subprocess.run([f"{ADB_PATH}", "shell", "find /sdcard/DCIM -type f -name '*.mp4'"],
 #result = subprocess.run([f"{ADB_PATH}", "shell", f"find /sdcard/DCIM/Camera -type f -name '{TARGET_YEAR}*.mp4'"],
-result = subprocess.run([f"{ADB_PATH}", "shell", f"find {android_dir} -type f -name '{TARGET_YEAR}*.{file_ext}'"],
-                        capture_output=True, text=True)
+result = subprocess.run([ADB_PATH, "shell", f"find {android_dir} -type f -name '{TARGET_YEAR}*.{file_ext}'"], 
+                        capture_output=True, text=True, check=False)
 
 files = result.stdout.strip().split("\n")
 
 if set_compress:
-    subprocess.run([f"{ADB_PATH}", "shell", "setprop service.adb.compress 1"], capture_output=True)
+    subprocess.run([ADB_PATH, "shell", "setprop service.adb.compress 1"], capture_output=True, check=False)
 
 good_files = []
 for file in files:
@@ -64,13 +64,13 @@ for good_file in good_files:
         #    year = int(match.group(1))
         dl_count += 1
         print(f"Downloading {good_file} File {dl_count} of {good_len}")
-        good_file_result = subprocess.run([ADB_PATH, "pull", "-a", good_file, LOCAL_SAVE_DIR], capture_output=True, text=True)
+        good_file_result = subprocess.run([ADB_PATH, "pull", "-a", good_file, LOCAL_SAVE_DIR], capture_output=True, text=True, check=False)
         if good_file_result.returncode == 0:
             downloaded_files.append(good_file)
         else:
             failed_files.append(good_file)
             print(f"  FAILED: {good_file_result.stderr.strip()}")
-    except Exception as e:
+    except (OSError, subprocess.SubprocessError) as e:
         print(f"Error downloading {good_file}: {e}")
         failed_files.append(good_file)
 
@@ -80,7 +80,7 @@ if failed_files:
         print(f"  {f}")
 
 if set_compress:
-    subprocess.run([ADB_PATH, "shell", "setprop service.adb.compress 0"], capture_output=True)
+    subprocess.run([ADB_PATH, "shell", "setprop service.adb.compress 0"], capture_output=True, check=False)
 
 # TODO: Possibly implement a tar then pull like:
 #adb shell "tar cf /cache/temp.tar /sdcard/DCIM/Camera/2021*.jpeg" && adb pull /cache/temp.tar && tar xf temp.tar && rm temp.tar
@@ -91,7 +91,9 @@ if delete_files:
         try:
             #del_count += 1
             print(f"Deleting {del_file} File {del_count} of {good_len}")
-            #subprocess.run([ADB_PATH, "shell", "rm", "", del_file, LOCAL_SAVE_DIR], capture_output=True)
-            subprocess.run([ADB_PATH, "shell", "rm", "", del_file], capture_output=True)
-        except Exception as e:
+            # adb shell passes args to the device shell unquoted, so quote paths with spaces/parens
+            del_result = subprocess.run([ADB_PATH, "shell", "rm", shlex.quote(del_file)], capture_output=True, text=True, check=False)
+            if del_result.returncode != 0:
+                print(f"  FAILED: {del_result.stderr.strip()}")
+        except (OSError, subprocess.SubprocessError) as e:
             print(f"Error deleting {del_file}: {e}")
